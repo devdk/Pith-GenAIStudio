@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// SQLite for local dev; switch provider/url to Postgres at deploy time.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  tenantId  String   @default("local")
+  name      String
+  style     String // BRANDED | CARTOON | PRESENTER
+  // JSON array of beats; each beat may carry a `narration` chunk used for
+  // voiceover + presenter word-sync.
+  beatsJson String
+  voiceId   String?
+  silent    Boolean  @default(false)
+  accent    String   @default("#8c52ff")
+  photoId   String?
+  photo     Asset?   @relation(fields: [photoId], references: [id])
+  jobs      Job[]
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         Project  @relation(fields: [projectId], references: [id])
+  state           String   @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED
+  step            String   @default("queued") // human-readable current step
+  error           String?
+  // JSON of completed step outputs so a retry resumes instead of re-billing.
+  checkpointsJson String   @default("{}")
+  outputPath      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Asset {
+  id           String    @id @default(cuid())
+  tenantId     String    @default("local")
+  kind         String // PHOTO | AUDIO | VIDEO
+  path         String // relative to STORAGE_DIR
+  originalName String
+  consent      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  projects     Project[]
+}
+
+model Voice {
+  id        String   @id // ElevenLabs voice id
+  tenantId  String   @default("local")
+  name      String
+  source    String // CLONED | PREMADE
+  createdAt DateTime @default(now())
+}
