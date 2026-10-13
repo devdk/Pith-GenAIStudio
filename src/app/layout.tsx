@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WorkerBanner } from "./WorkerBanner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,10 +20,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="flex gap-5 text-sm text-slate-300">
               <Link href="/" className="hover:text-white">Videos</Link>
               <Link href="/new" className="hover:text-white">New video</Link>
+              <Link href="/clips" className="hover:text-white">Clip finder</Link>
               <Link href="/voices" className="hover:text-white">Voices</Link>
             </div>
           </div>
         </nav>
+        <WorkerBanner />
         <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
       </body>
     </html>

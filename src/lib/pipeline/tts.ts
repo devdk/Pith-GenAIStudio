@@ -1,6 +1,6 @@
-import { parseBuffer } from "music-metadata";
 import { ELEVENLABS_API_KEY, requireEnv } from "../env";
 import { saveFile } from "../storage";
+import { probeDurationSeconds } from "./ffmpeg";
 
 export type TtsResult = { relPath: string; durationSeconds: number };
 
@@ -29,10 +29,11 @@ export async function generateVoiceover(opts: {
   if (!res.ok) throw new Error(`ElevenLabs TTS ${res.status}: ${await res.text()}`);
   const audio = Buffer.from(await res.arrayBuffer());
 
-  const meta = await parseBuffer(audio, "audio/mpeg", { duration: true });
-  const durationSeconds = meta.format.duration ?? 0;
+  // Save first, then measure with ffmpeg — robust across the container quirks
+  // that trip header-parsing libraries under some module loaders.
+  const relPath = await saveFile(`public/${opts.fileBase}.mp3`, audio);
+  const durationSeconds = await probeDurationSeconds(relPath);
   if (!durationSeconds) throw new Error("could not measure narration duration");
 
-  const relPath = await saveFile(`public/${opts.fileBase}.mp3`, audio);
   return { relPath, durationSeconds };
 }

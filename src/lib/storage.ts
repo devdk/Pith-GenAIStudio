@@ -17,6 +17,13 @@ export function absPath(relPath: string): string {
   return path.join(STORAGE_DIR, relPath);
 }
 
+/** Ensure the parent directory of a storage-relative path exists, return its abs path. */
+export async function ensureAbsPath(relPath: string): Promise<string> {
+  const abs = path.join(STORAGE_DIR, relPath);
+  await mkdir(path.dirname(abs), { recursive: true });
+  return abs;
+}
+
 /**
  * The lip-sync API downloads inputs from public, redirect-free URLs. Local
  * files aren't reachable from the internet, so in local dev we upload to

@@ -10,14 +10,25 @@ const beatSchema = z
   })
   .passthrough();
 
+/** 9:16 reel formats — all need narration, two of them need a presenter photo. */
+const VERTICAL = ["COMMENTARY", "BROLL", "SPLIT"] as const;
+
 const createSchema = z.object({
   name: z.string().min(1),
-  style: z.enum(["BRANDED", "CARTOON", "PRESENTER"]),
+  style: z.enum(["BRANDED", "CARTOON", "PRESENTER", ...VERTICAL]),
   beats: z.array(beatSchema).min(1),
   voiceId: z.string().optional(),
   silent: z.boolean().default(false),
   accent: z.string().default("#8c52ff"),
   photoId: z.string().optional(),
+  backgroundId: z.string().optional(),
+  captionStyle: z.enum(["bold", "karaoke", "boxed"]).default("bold"),
+  bgModel: z
+    .enum(["kling-v3-std", "kling-v3-pro", "kling-v2-6-pro", "seedance-2-fast-720p"])
+    .default("kling-v3-std"),
+  headline: z.string().optional(),
+  brand: z.string().optional(),
+  sourceUrl: z.string().optional(),
 });
 
 export async function GET() {
@@ -35,9 +46,17 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  if (d.style === "PRESENTER" && !d.photoId) {
+  const needsFace = d.style === "PRESENTER" || d.style === "COMMENTARY" || d.style === "SPLIT";
+  if (needsFace && !d.photoId) {
     return NextResponse.json(
-      { error: "Presenter videos need a presenter photo." },
+      { error: "This format needs a presenter photo." },
+      { status: 400 }
+    );
+  }
+  const isVertical = (VERTICAL as readonly string[]).includes(d.style);
+  if (isVertical && d.silent) {
+    return NextResponse.json(
+      { error: "Reel formats are caption-driven and need narration — uncheck silent." },
       { status: 400 }
     );
   }
@@ -61,6 +80,12 @@ export async function POST(req: NextRequest) {
       silent: d.silent,
       accent: d.accent,
       photoId: d.photoId,
+      backgroundId: d.backgroundId,
+      captionStyle: d.captionStyle,
+      bgModel: d.bgModel,
+      headline: d.headline,
+      brand: d.brand,
+      sourceUrl: d.sourceUrl,
       jobs: { create: {} },
     },
     include: { jobs: true },

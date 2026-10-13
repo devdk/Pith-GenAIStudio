@@ -27,6 +27,10 @@
 # local tooling
 /.claude
 
+# Platform-specific binaries fetched at setup, not source. yt-dlp in particular
+# self-updates and must stay current or YouTube extraction breaks — see README.
+/bin
+
 # debug
 npm-debug.log*
 yarn-debug.log*

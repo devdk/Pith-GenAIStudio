@@ -12,7 +12,8 @@ model Project {
   id        String   @id @default(cuid())
   tenantId  String   @default("local")
   name      String
-  style     String // BRANDED | CARTOON | PRESENTER
+  // BRANDED | CARTOON | PRESENTER (1:1) — COMMENTARY | BROLL | SPLIT (9:16)
+  style     String
   // JSON array of beats; each beat may carry a `narration` chunk used for
   // voiceover + presenter word-sync.
   beatsJson String
@@ -20,21 +21,49 @@ model Project {
   silent    Boolean  @default(false)
   accent    String   @default("#8c52ff")
   photoId   String?
-  photo     Asset?   @relation(fields: [photoId], references: [id])
+  photo     Asset?   @relation("ProjectPhoto", fields: [photoId], references: [id])
+
+  // --- 9:16 reel formats ---
+  backgroundId String?
+  background   Asset?  @relation("ProjectBackground", fields: [backgroundId], references: [id])
+  captionStyle String  @default("bold") // bold | karaoke | boxed
+  /** Background generation model — see src/lib/pipeline/models.ts */
+  bgModel      String  @default("kling-v3-std")
+  headline     String?
+  brand        String?
+  /** Provenance when the script was remixed from a public post. */
+  sourceUrl    String?
+
   jobs      Job[]
   createdAt DateTime @default(now())
 }
 
 model Job {
   id              String   @id @default(cuid())
-  projectId       String
-  project         Project  @relation(fields: [projectId], references: [id])
+  /**
+   * RENDER — build a video from a Project.
+   * HARVEST — mine clips from a Source.
+   * CLIP — turn one approved Clip into a finished reel.
+   */
+  kind            String   @default("RENDER")
+  projectId       String?
+  project         Project? @relation(fields: [projectId], references: [id])
+  sourceId        String?
+  source          Source?  @relation(fields: [sourceId], references: [id])
+  clipId          String?
+  clip            Clip?    @relation(fields: [clipId], references: [id])
   state           String   @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED
   step            String   @default("queued") // human-readable current step
   error           String?
   // JSON of completed step outputs so a retry resumes instead of re-billing.
   checkpointsJson String   @default("{}")
   outputPath      String?
+
+  // --- ready-to-post extras ---
+  coverPath     String?
+  postCaption   String?
+  hashtagsJson  String?
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -47,7 +76,75 @@ model Asset {
   originalName String
   consent      Boolean   @default(false)
   createdAt    DateTime  @default(now())
-  projects     Project[]
+  projectsAsPhoto      Project[] @relation("ProjectPhoto")
+  projectsAsBackground Project[] @relation("ProjectBackground")
+}
+
+/**
+ * A long-form video or podcast to mine clips from. Holds the downloaded media
+ * and both transcript views: word-level (for frame-accurate cuts and captions)
+ * and segment-level (the cheap view the ranking model reads).
+ */
+model Source {
+  id        String  @id @default(cuid())
+  tenantId  String  @default("local")
+  title     String
+  /** Original URL when ingested from a link; null when uploaded. */
+  sourceUrl String?
+  /** Storage-relative path to the downloaded/uploaded video. */
+  videoPath String?
+  /** Storage-relative path to the extracted audio used for transcription. */
+  audioPath String?
+  durationSeconds Float?
+
+  /** What the user wants out of it — steers ranking. */
+  brief     String?
+  /** Target clip length window, seconds. */
+  minClipSeconds Int @default(20)
+  maxClipSeconds Int @default(60)
+
+  /** Word-level timestamps: [{text,start,end}] — kept local, never sent to the LLM. */
+  transcriptJson String?
+  /** Segment-level view actually sent for ranking. */
+  segmentsJson   String?
+
+  clips     Clip[]
+  jobs      Job[]
+  createdAt DateTime @default(now())
+}
+
+/** A candidate clip identified within a Source, pending human review. */
+model Clip {
+  id        String @id @default(cuid())
+  sourceId  String
+  source    Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  startSeconds Float
+  endSeconds   Float
+  /** 0-100 confidence that this works as a standalone short. */
+  score     Int
+  /** Why the model picked it — shown to the user, not rendered. */
+  reason    String?
+  /** Suggested on-screen title / hook for the reel. */
+  title     String?
+  /** The spoken words inside the clip. */
+  transcriptText String?
+  /** PENDING | APPROVED | REJECTED */
+  status    String @default("PENDING")
+  rank      Int    @default(0)
+
+  // --- rendered reel ---
+  /** card = video panel + caption zone. fill = cropped full-bleed. */
+  layout       String  @default("card")
+  /** Scroll-stopping text burned over the opening seconds. */
+  hookText     String?
+  outputPath   String?
+  coverPath    String?
+  postCaption  String?
+  hashtagsJson String?
+
+  jobs      Job[]
+  createdAt DateTime @default(now())
 }
 
 model Voice {
