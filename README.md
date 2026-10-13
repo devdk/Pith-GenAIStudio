@@ -1,7 +1,9 @@
-# Mirasphere Studio
+# Pith Studio
+
+*The essential part, and the shortest way to say it.*
 
 Generate branded story videos, cartoon explainers, AI-presenter videos and
-9:16 reels from a web UI — and mine ready-to-post clips out of long podcasts.
+9:16 reels from a web UI, and mine ready-to-post clips out of long podcasts.
 Built on Next.js + Remotion, with ElevenLabs (narration, word timestamps,
 in-house voice cloning), Magnific/Freepik (Kling video generation, Latent Sync
 lip-sync) and Claude (scripting, art direction, clip selection).

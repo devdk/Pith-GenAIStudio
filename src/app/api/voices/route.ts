@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   out.append("name", name);
   out.append(
     "description",
-    `Cloned in-house via Mirasphere Studio on ${new Date().toISOString().slice(0, 10)}`
+    `Cloned in-house via Pith Studio on ${new Date().toISOString().slice(0, 10)}`
   );
   for (const f of files) out.append("files", f, f.name);
 
